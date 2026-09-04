@@ -1,0 +1,550 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>困难症患者的命运转盘</title>
+	
+    <style>
+        :root {
+            --primary: #ff6b6b;
+            --secondary: #4ecdc4;
+            --bg: #f7f9fc;
+            --text: #2d3436;
+        }
+        * { margin:0; padding:0; box-sizing:border-box; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; }
+        body { background:var(--bg); color:var(--text); padding-bottom:60px; }
+
+        /* 顶部标题 */
+        header { background:linear-gradient(135deg,var(--primary),#ff8e8e); color:#000; padding:22px 20px; text-align:center; }
+        header h1 { font-size:22px; font-weight:700; }
+		
+
+        /* 自定义输入区 */
+        .input-section {
+            display:flex; justify-content:center; align-items:center;
+            gap:14px; padding:30px 20px 45px 20px; max-width:520px; margin:0 auto;
+        }
+        .input-section input {
+            flex:1; max-width:320px; padding:13px 16px; border:2px solid #e0e0e0;
+            border-radius:14px; font-size:15px; outline:none; text-align:center;
+            transition:border-color .3s;
+        }
+        .input-section input:focus { border-color:var(--secondary); }
+        .input-section button {
+            padding:13px 24px; background:var(--secondary); color:#fff;
+            border:none; border-radius:14px; font-size:15px; font-weight:600;
+            cursor:pointer; white-space:nowrap; transition:opacity .3s;
+        }
+        .input-section button:hover { opacity:.85; }
+
+        /* 转盘箭头 */
+        .arrow-indicator {
+            width:0; height:0; margin:0 auto;
+            border-left:16px solid transparent; border-right:16px solid transparent;
+            border-top:22px solid var(--primary); position:relative; z-index:10;
+        }
+
+        /* 转盘容器 */
+        .wheel-wrapper { display:flex; justify-content:center; margin-bottom:10px; }
+        .wheel-container { position:relative; width:300px; height:300px; }
+        #wheelCanvas { width:300px; height:300px; border-radius:50%; box-shadow:0 8px 24px rgba(0,0,0,.12); }
+
+        /* 开始按钮 */
+        .spin-btn-wrap { text-align:center; margin:28px 0 10px; }
+        .spin-btn {
+            padding:16px 56px; background:var(--secondary); color:#fff;
+            border:none; border-radius:50px; font-size:18px; font-weight:700;
+            cursor:pointer; box-shadow:0 6px 20px rgba(78,205,196,.4);
+            transition:transform .2s,box-shadow .2s;
+        }
+        .spin-btn:hover { transform:translateY(-2px); box-shadow:0 8px 24px rgba(78,205,196,.5); }
+        .spin-btn:active { transform:translateY(0); }
+        .spin-btn:disabled { opacity:.5; cursor:not-allowed; transform:none; }
+
+        /* 结果弹窗 */
+        .result-overlay {
+            display:none; position:fixed; inset:0; background:rgba(0,0,0,.45);
+            z-index:999; justify-content:center; align-items:center;
+        }
+        .result-overlay.show { display:flex; }
+        .result-box {
+            background:#fff; border-radius:20px; padding:40px 50px; text-align:center;
+            animation:popIn .4s ease; max-width:90vw;
+        }
+        @keyframes popIn { from{transform:scale(.6);opacity:0} to{transform:scale(1);opacity:1} }
+        .result-box h2 { font-size:18px; color:#999; margin-bottom:10px; }
+        .result-box .result-text { font-size:28px; font-weight:700; color:var(--primary); margin-bottom:24px; }
+        .result-box button {
+            padding:10px 32px; background:var(--secondary); color:#fff; border:none;
+            border-radius:12px; font-size:15px; cursor:pointer;
+        }
+
+        /* 底部食物标签列表 */
+        .wheel-items {
+            min-height:80px; padding:16px 20px; display:flex; flex-wrap:wrap;
+            justify-content:center; align-items:center; gap:10px;
+            border-top:1px dashed #ddd; margin-top:10px;
+        }
+        .item-tag {
+            display:inline-flex; align-items:center; gap:8px;
+            padding:10px 16px; background:#fff; border:1px solid #e0e0e0;
+            border-radius:16px; font-size:14px; white-space:nowrap;
+            box-shadow:0 2px 4px rgba(0,0,0,.05); transition:all .3s;
+        }
+        .item-tag:hover { box-shadow:0 4px 10px rgba(0,0,0,.1); transform:translateY(-2px); }
+        .item-tag .edit-icon { color:var(--primary); cursor:pointer; font-size:14px; }
+        .item-tag .remove-btn { color:#999; cursor:pointer; font-weight:bold; font-size:16px; }
+        .item-tag .remove-btn:hover { color:var(--primary); }
+
+        /* ===== 城市美食推荐区 ===== */
+        .city-section {
+            max-width:600px; margin:30px auto 0; padding:0 20px;
+        }
+        .city-section h2 {
+            font-size:18px; font-weight:700; text-align:center;
+            margin-bottom:16px; color:var(--text);
+        }
+        .city-group {
+            background:#fff; border-radius:16px; padding:16px;
+            margin-bottom:14px; box-shadow:0 2px 8px rgba(0,0,0,.06);
+        }
+        .city-group h3 {
+            font-size:15px; font-weight:600; color:var(--primary);
+            margin-bottom:10px; padding-bottom:6px; border-bottom:1px solid #f0f0f0;
+        }
+        .city-foods {
+            display:flex; flex-wrap:wrap; gap:8px;
+        }
+        .city-foods .food-chip {
+            padding:6px 14px; background:var(--bg); border-radius:12px;
+            font-size:13px; color:var(--text); cursor:pointer;
+            border:1px solid #eee; transition:all .3s;
+        }
+        .city-foods .food-chip:hover {
+            background:var(--secondary); color:#fff; border-color:var(--secondary);
+        }
+
+        /* ===== 菜系推荐区 ===== */
+        .cuisine-section {
+            max-width:600px; margin:24px auto 0; padding:0 20px;
+        }
+        .cuisine-section h2 {
+            font-size:18px; font-weight:700; text-align:center;
+            margin-bottom:16px; color:var(--text);
+        }
+        .cuisine-grid {
+            display:grid; grid-template-columns:repeat(auto-fill,minmax(130px,1fr));
+            gap:12px;
+        }
+        .cuisine-card {
+            background:#fff; border-radius:14px; padding:16px 12px;
+            text-align:center; box-shadow:0 2px 8px rgba(0,0,0,.06);
+            cursor:pointer; transition:all .3s; border:2px solid transparent;
+        }
+        .cuisine-card:hover {
+            border-color:var(--secondary); transform:translateY(-3px);
+            box-shadow:0 6px 16px rgba(0,0,0,.1);
+        }
+        .cuisine-card .emoji { font-size:28px; margin-bottom:6px; }
+        .cuisine-card .name { font-size:14px; font-weight:600; }
+    </style>
+</head>
+<body>
+
+    <header>
+		<h1>🍽️ 世纪难题 - 今天吃什么？</h1>
+		<p>选择困难症终结者，当然也不至于吃</p>
+	</header>
+
+    <!-- 自定义输入 -->
+    <div class="input-section">
+        <input type="text" id="customInput" placeholder="输入自定义选项，如：火锅">
+        <button id="addBtn">+ 添加</button>
+    </div>
+
+    <!-- 转盘 -->
+    <div class="arrow-indicator"></div>
+    <div class="wheel-wrapper">
+        <div class="wheel-container">
+            <canvas id="wheelCanvas" width="600" height="600"></canvas>
+        </div>
+    </div>
+    <div class="spin-btn-wrap">
+        <button class="spin-btn" id="spinBtn">开始转！</button>
+    </div>
+
+    <!-- 底部食物标签 -->
+    <div class="wheel-items" id="wheelItems"></div>
+
+    <!-- ===== 城市美食推荐 ===== -->
+    <div class="city-section">
+        <h2>📍 各城市美食推荐</h2>
+
+        <div class="city-group">
+            <h3>🌶️ 成都</h3>
+            <div class="city-foods">
+                <span class="food-chip" data-name="麻辣火锅">麻辣火锅</span>
+                <span class="food-chip" data-name="串串香">串串香</span>
+                <span class="food-chip" data-name="担担面">担担面</span>
+                <span class="food-chip" data-name="钵钵鸡">钵钵鸡</span>
+                <span class="food-chip" data-name="夫妻肺片">夫妻肺片</span>
+                <span class="food-chip" data-name="甜水面">甜水面</span>
+                <span class="food-chip" data-name="兔头">兔头</span>
+                <span class="food-chip" data-name="冒菜">冒菜</span>
+            </div>
+        </div>
+
+        <div class="city-group">
+            <h3>🥟 广州</h3>
+            <div class="city-foods">
+                <span class="food-chip" data-name="肠粉">肠粉</span>
+                <span class="food-chip" data-name="白切鸡">白切鸡</span>
+                <span class="food-chip" data-name="叉烧">叉烧</span>
+                <span class="food-chip" data-name="虾饺">虾饺</span>
+                <span class="food-chip" data-name="烧鹅">烧鹅</span>
+                <span class="food-chip" data-name="煲仔饭">煲仔饭</span>
+                <span class="food-chip" data-name="干炒牛河">干炒牛河</span>
+                <span class="food-chip" data-name="双皮奶">双皮奶</span>
+            </div>
+        </div>
+
+        <div class="city-group">
+            <h3>🍜 武汉</h3>
+            <div class="city-foods">
+                <span class="food-chip" data-name="热干面">热干面</span>
+                <span class="food-chip" data-name="豆皮">豆皮</span>
+                <span class="food-chip" data-name="鸭脖">鸭脖</span>
+                <span class="food-chip" data-name="面窝">面窝</span>
+                <span class="food-chip" data-name="糊汤粉">糊汤粉</span>
+                <span class="food-chip" data-name="藕汤">藕汤</span>
+            </div>
+        </div>
+
+        <div class="city-group">
+            <h3>🥘 重庆</h3>
+            <div class="city-foods">
+                <span class="food-chip" data-name="重庆火锅">重庆火锅</span>
+                <span class="food-chip" data-name="小面">重庆小面</span>
+                <span class="food-chip" data-name="酸辣粉">酸辣粉</span>
+                <span class="food-chip" data-name="烤鱼">烤鱼</span>
+                <span class="food-chip" data-name="毛血旺">毛血旺</span>
+                <span class="food-chip" data-name="泉水鸡">泉水鸡</span>
+            </div>
+        </div>
+
+        <div class="city-group">
+            <h3>🍲 长沙</h3>
+            <div class="city-foods">
+                <span class="food-chip" data-name="臭豆腐">臭豆腐</span>
+                <span class="food-chip" data-name="剁椒鱼头">剁椒鱼头</span>
+                <span class="food-chip" data-name="糖油粑粑">糖油粑粑</span>
+                <span class="food-chip" data-name="口味虾">口味虾</span>
+                <span class="food-chip" data-name="米粉">米粉</span>
+                <span class="food-chip" data-name="茶颜悦色">茶颜悦色</span>
+            </div>
+        </div>
+
+        <div class="city-group">
+            <h3>🥩 北京</h3>
+            <div class="city-foods">
+                <span class="food-chip" data-name="北京烤鸭">北京烤鸭</span>
+                <span class="food-chip" data-name="炸酱面">炸酱面</span>
+                <span class="food-chip" data-name="涮羊肉">涮羊肉</span>
+                <span class="food-chip" data-name="卤煮">卤煮</span>
+                <span class="food-chip" data-name="炒肝">炒肝</span>
+                <span class="food-chip" data-name="豆汁">豆汁</span>
+            </div>
+        </div>
+
+        <div class="city-group">
+            <h3>🦀 上海</h3>
+            <div class="city-foods">
+                <span class="food-chip" data-name="小笼包">小笼包</span>
+                <span class="food-chip" data-name="生煎">生煎</span>
+                <span class="food-chip" data-name="本帮红烧肉">本帮红烧肉</span>
+                <span class="food-chip" data-name="大闸蟹">大闸蟹</span>
+                <span class="food-chip" data-name="阳春面">阳春面</span>
+                <span class="food-chip" data-name="葱油饼">葱油饼</span>
+            </div>
+        </div>
+
+        <div class="city-group">
+            <h3>🍛 西安</h3>
+            <div class="city-foods">
+                <span class="food-chip" data-name="肉夹馍">肉夹馍</span>
+                <span class="food-chip" data-name="凉皮">凉皮</span>
+                <span class="food-chip" data-name="羊肉泡馍">羊肉泡馍</span>
+                <span class="food-chip" data-name="葫芦鸡">葫芦鸡</span>
+                <span class="food-chip" data-name="biangbiang面">biangbiang面</span>
+                <span class="food-chip" data-name="臊子面">臊子面</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== 菜系推荐 ===== -->
+    <div class="cuisine-section">
+        <h2>🍳 八大菜系推荐</h2>
+        <div class="cuisine-grid">
+            <div class="cuisine-card" data-cuisine="川菜">
+                <div class="emoji">🌶️</div>
+                <div class="name">川菜</div>
+            </div>
+            <div class="cuisine-card" data-cuisine="粤菜">
+                <div class="emoji">🥟</div>
+                <div class="name">粤菜</div>
+            </div>
+            <div class="cuisine-card" data-cuisine="鲁菜">
+                <div class="emoji">🍖</div>
+                <div class="name">鲁菜</div>
+            </div>
+            <div class="cuisine-card" data-cuisine="苏菜">
+                <div class="emoji">🐟</div>
+                <div class="name">苏菜</div>
+            </div>
+            <div class="cuisine-card" data-cuisine="浙菜">
+                <div class="emoji">🦐</div>
+                <div class="name">浙菜</div>
+            </div>
+            <div class="cuisine-card" data-cuisine="闽菜">
+                <div class="emoji">🍲</div>
+                <div class="name">闽菜</div>
+            </div>
+            <div class="cuisine-card" data-cuisine="湘菜">
+                <div class="emoji">🔥</div>
+                <div class="name">湘菜</div>
+            </div>
+            <div class="cuisine-card" data-cuisine="徽菜">
+                <div class="emoji">🥘</div>
+                <div class="name">徽菜</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 结果弹窗 -->
+    <div class="result-overlay" id="resultOverlay">
+        <div class="result-box">
+            <h2>🎉 今天吃——</h2>
+            <div class="result-text" id="resultText"></div>
+            <button id="closeResult">好的！</button>
+        </div>
+    </div>
+
+    <script>
+        // ========== 数据管理 ==========
+        let foodItems = ['潮汕牛肉火锅', '肠粉', '扬州炒饭', '螺蛳粉', '隆江猪脚饭'];
+
+        // 转盘颜色
+        const colors = ['#ff6b6b','#4ecdc4','#45b7d1','#96ceb4','#feca57','#ff9ff3','#54a0ff','#5f27cd','#01a3a4','#f368e0'];
+
+        // 加载本地缓存
+        function loadFromStorage() {
+            const saved = localStorage.getItem('wheel_foods');
+            if (saved) foodItems = JSON.parse(saved);
+        }
+        function saveToStorage() {
+            localStorage.setItem('wheel_foods', JSON.stringify(foodItems));
+        }
+
+        // ========== 绘制转盘 ==========
+        const canvas = document.getElementById('wheelCanvas');
+        const ctx = canvas.getContext('2d');
+        let currentAngle = 0;
+        let isSpinning = false;
+
+        function drawWheel() {
+            const w = canvas.width, h = canvas.height;
+            const cx = w / 2, cy = h / 2, r = w / 2 - 10;
+            ctx.clearRect(0, 0, w, h);
+
+            if (foodItems.length === 0) {
+                // 空白转盘
+                ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2);
+                ctx.fillStyle = '#e0e0e0'; ctx.fill();
+                ctx.fillStyle = '#999'; ctx.font = '36px sans-serif';
+                ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+                ctx.fillText('请添加选项', cx, cy);
+                return;
+            }
+
+            const slice = (Math.PI * 2) / foodItems.length;
+            foodItems.forEach((item, i) => {
+                const startAngle = currentAngle + i * slice;
+                const endAngle = startAngle + slice;
+
+                // 扇形
+                ctx.beginPath();
+                ctx.moveTo(cx, cy);
+                ctx.arc(cx, cy, r, startAngle, endAngle);
+                ctx.closePath();
+                ctx.fillStyle = colors[i % colors.length];
+                ctx.fill();
+
+                // 文字
+                ctx.save();
+                ctx.translate(cx, cy);
+                ctx.rotate(startAngle + slice / 2);
+                ctx.textAlign = 'right';
+                ctx.fillStyle = '#fff';
+                ctx.font = 'bold 28px sans-serif';
+                ctx.shadowColor = 'rgba(0,0,0,.3)';
+                ctx.shadowBlur = 4;
+                const maxLen = 6;
+                const text = item.length > maxLen ? item.slice(0, maxLen) + '…' : item;
+                ctx.fillText(text, r - 30, 10);
+                ctx.restore();
+            });
+
+            // 中心圆
+            ctx.beginPath(); ctx.arc(cx, cy, 22, 0, Math.PI * 2);
+            ctx.fillStyle = '#fff'; ctx.fill();
+            ctx.strokeStyle = '#e0e0e0'; ctx.lineWidth = 3; ctx.stroke();
+        }
+
+        // ========== 渲染底部标签 ==========
+        function renderTags() {
+            const container = document.getElementById('wheelItems');
+            container.innerHTML = '';
+            foodItems.forEach((item, i) => {
+                const tag = document.createElement('div');
+                tag.className = 'item-tag';
+                tag.innerHTML = `
+                    <span class="edit-icon" title="编辑" onclick="editItem(${i})">✏️</span>
+                    <span>${item}</span>
+                    <span class="remove-btn" title="删除" onclick="removeItem(${i})">✕</span>
+                `;
+                container.appendChild(tag);
+            });
+            drawWheel();
+        }
+
+        // ========== 增 / 删 / 改 ==========
+        function addItem() {
+            const input = document.getElementById('customInput');
+            const val = input.value.trim();
+            if (!val) return;
+            foodItems.push(val);
+            saveToStorage();
+            renderTags();
+            input.value = '';
+        }
+
+        function removeItem(index) {
+            foodItems.splice(index, 1);
+            saveToStorage();
+            renderTags();
+        }
+
+        function editItem(index) {
+            const newName = prompt('修改名称：', foodItems[index]);
+            if (newName !== null && newName.trim()) {
+                foodItems[index] = newName.trim();
+                saveToStorage();
+                renderTags();
+            }
+        }
+
+        // 绑定添加按钮
+        document.getElementById('addBtn').addEventListener('click', addItem);
+        document.getElementById('customInput').addEventListener('keydown', e => {
+            if (e.key === 'Enter') addItem();
+        });
+
+        // 城市美食 chip 点击 → 加入转盘
+        document.querySelectorAll('.food-chip').forEach(chip => {
+            chip.addEventListener('click', () => {
+                const name = chip.dataset.name;
+                if (!foodItems.includes(name)) {
+                    foodItems.push(name);
+                    saveToStorage();
+                    renderTags();
+                }
+                // 轻提示
+                chip.style.background = 'var(--primary)';
+                chip.style.color = '#fff';
+                chip.style.borderColor = 'var(--primary)';
+                setTimeout(() => {
+                    chip.style.background = '';
+                    chip.style.color = '';
+                    chip.style.borderColor = '';
+                }, 800);
+            });
+        });
+
+        // 菜系卡片点击 → 弹对应菜系推荐
+        document.querySelectorAll('.cuisine-card').forEach(card => {
+            card.addEventListener('click', () => {
+                const cuisine = card.dataset.cuisine;
+                const map = {
+                    '川菜': ['麻婆豆腐','水煮鱼','回锅肉','宫保鸡丁','夫妻肺片','担担面'],
+                    '粤菜': ['白切鸡','叉烧','清蒸鱼','烧鹅','虾饺','煲仔饭'],
+                    '鲁菜': ['糖醋鲤鱼','九转大肠','葱烧海参','油爆双脆','德州扒鸡'],
+                    '苏菜': ['松鼠桂鱼','狮子头','盐水鸭','大煮干丝','叫花鸡'],
+                    '浙菜': ['西湖醋鱼','东坡肉','龙井虾仁','宋嫂鱼羹','干炸响铃'],
+                    '闽菜': ['佛跳墙','荔枝肉','醉排骨','鸡汤汆海蚌','太极芋泥'],
+                    '湘菜': ['剁椒鱼头','东安鸡','腊味合蒸','毛氏红烧肉','口味蛇'],
+                    '徽菜': ['臭鳜鱼','毛豆腐','胡氏一品锅','符离集烧鸡','问政山笋']
+                };
+                const list = map[cuisine] || [];
+                if (list.length) {
+                    const pick = list[Math.floor(Math.random() * list.length)];
+                    alert(`🍽️ ${cuisine}推荐：${pick}\n（可点击城市美食中的具体菜品加入转盘）`);
+                }
+            });
+        });
+
+        // ========== 转盘旋转 ==========
+        document.getElementById('spinBtn').addEventListener('click', () => {
+            if (isSpinning || foodItems.length === 0) return;
+            isSpinning = true;
+            document.getElementById('spinBtn').disabled = true;
+
+            const spins = 5 + Math.random() * 5;
+            const targetAngle = currentAngle + spins * Math.PI * 2 + Math.random() * Math.PI * 2;
+            const duration = 4000;
+            const start = performance.now();
+            const startAngle = currentAngle;
+
+            function animate(now) {
+                const elapsed = now - start;
+                const progress = Math.min(elapsed / duration, 1);
+                // easeOut
+                const ease = 1 - Math.pow(1 - progress, 3);
+                currentAngle = startAngle + ease * (targetAngle - startAngle);
+                drawWheel();
+
+                if (progress < 1) {
+                    requestAnimationFrame(animate);
+                } else {
+                    isSpinning = false;
+                    document.getElementById('spinBtn').disabled = false;
+                    // 计算结果（箭头在顶部 = -π/2）
+                    const slice = (Math.PI * 2) / foodItems.length;
+                    const normalized = (((-Math.PI / 2 - currentAngle) % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2);
+                    const index = Math.floor(normalized / slice) % foodItems.length;
+                    showResult(foodItems[index]);
+                }
+            }
+            requestAnimationFrame(animate);
+        });
+
+        // ========== 结果弹窗 ==========
+        function showResult(name) {
+            document.getElementById('resultText').textContent = name;
+            document.getElementById('resultOverlay').classList.add('show');
+        }
+        document.getElementById('closeResult').addEventListener('click', () => {
+            document.getElementById('resultOverlay').classList.remove('show');
+        });
+        document.getElementById('resultOverlay').addEventListener('click', e => {
+            if (e.target === e.currentTarget) {
+                document.getElementById('resultOverlay').classList.remove('show');
+            }
+        });
+
+        // ========== 初始化 ==========
+        loadFromStorage();
+        renderTags();
+    </script>
+</body>
+</html>
